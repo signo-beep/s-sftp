@@ -11,13 +11,13 @@ export function isIgnored(relPosix: string, patterns: string[]): boolean {
             continue;
         }
         if (!pattern.includes('/')) {
-            if (segments.some((s) => minimatch(s, pattern, { dot: true }))) {
+            if (segments.some((s) => minimatch(s, pattern, { dot: true, nonegate: true }))) {
                 return true;
             }
             continue;
         }
         for (let i = 1; i <= segments.length; i++) {
-            if (minimatch(segments.slice(0, i).join('/'), pattern, { dot: true })) {
+            if (minimatch(segments.slice(0, i).join('/'), pattern, { dot: true, nonegate: true })) {
                 return true;
             }
         }

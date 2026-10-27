@@ -5,8 +5,16 @@ import SftpClient from 'ssh2-sftp-client';
 import { SftpConfig } from './config';
 import { isIgnored } from './ignore';
 
+// Vero se il percorso relativo esce dalla radice (non basta startsWith('..'): esiste "..hidden")
+export function isOutside(rel: string): boolean {
+    return rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel);
+}
+
 export class Session {
+    private disposed = false;
     private client: SftpClient | undefined;
+    private mkdirQueue: Promise<unknown> = Promise.resolve();
+    private readonly knownDirs = new Set<string>();
     private connecting: Promise<SftpClient> | undefined;
 
     constructor(
@@ -20,7 +28,7 @@ export class Session {
     // Percorso relativo POSIX di un file locale rispetto alla radice del workspace
     relPosix(localPath: string): string {
         const rel = path.relative(this.root, localPath);
-        if (rel.startsWith('..') || path.isAbsolute(rel)) {
+        if (isOutside(rel)) {
             throw new Error(`File outside the workspace: ${localPath}`);
         }
         return rel.split(path.sep).join('/');
@@ -35,6 +43,7 @@ export class Session {
     }
 
     dispose(): void {
+        this.disposed = true;
         void this.client?.end().catch(() => undefined);
         this.client = undefined;
     }
@@ -63,7 +72,8 @@ export class Session {
                 // Solo chiave: niente password, keyboard-interactive o agent
                 authHandler: ['publickey'],
                 tryKeyboard: false,
-                readyTimeout: 15000,
+                // Ampio: il prompt TOFU modale blocca l'handshake finché l'utente non risponde
+                readyTimeout: 120000,
                 hostHash: 'sha256',
                 hostVerifier: ((hash: string, verify: (ok: boolean) => void) => {
                     this.verifyHost(hash).then(verify, () => verify(false));
@@ -76,8 +86,14 @@ export class Session {
             }
             throw e;
         }
+        // Sessione scartata durante la connessione (reload): chiudere invece di perdere il client
+        if (this.disposed) {
+            void client.end().catch(() => undefined);
+            throw new Error('Session disposed');
+        }
         client.on('close', () => {
             this.client = undefined;
+            this.knownDirs.clear();
         });
         this.client = client;
         return client;
@@ -110,6 +126,21 @@ export class Session {
         return true;
     }
 
+    // Serializza mkdir: due chiamate concorrenti sulla stessa cartella nuova fallirebbero
+    private ensureDir(client: SftpClient, dir: string): Promise<void> {
+        if (this.knownDirs.has(dir)) {
+            return Promise.resolve();
+        }
+        const run = this.mkdirQueue.then(async () => {
+            if (!this.knownDirs.has(dir)) {
+                await client.mkdir(dir, true);
+                this.knownDirs.add(dir);
+            }
+        });
+        this.mkdirQueue = run.catch(() => undefined);
+        return run;
+    }
+
     async uploadFile(local: string): Promise<void> {
         const rel = this.relPosix(local);
         if (this.ignored(rel)) {
@@ -118,7 +149,7 @@ export class Session {
         const remote = this.remoteFor(rel);
         try {
             const client = await this.get();
-            await client.mkdir(path.posix.dirname(remote), true);
+            await this.ensureDir(client, path.posix.dirname(remote));
             await client.fastPut(local, remote);
         } catch (e) {
             throw new Error(`Upload failed for ${rel}: ${(e as Error).message}`);
@@ -138,7 +169,7 @@ export class Session {
                 return 0;
             }
             // Creare la cartella remota anche se vuota
-            await (await this.get()).mkdir(this.remoteFor(dirRel), true);
+            await this.ensureDir(await this.get(), this.remoteFor(dirRel));
             this.log.info(`Created remote folder ${dirRel}`);
         }
         let count = 0;
@@ -197,6 +228,8 @@ export class Session {
         const client = await this.get();
         const remote = this.remoteFor(rel);
         const type = await client.exists(remote);
+        // Le cartelle in cache potrebbero non esistere più
+        this.knownDirs.clear();
         if (type === 'd') {
             await client.rmdir(remote, true);
         } else if (type === '-') {

@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { ConfigError, loadConfig } from './config';
-import { Session } from './client';
+import { loadConfig } from './config';
+import { Session, isOutside } from './client';
 import { SFTP_JSON } from './templates';
 
 interface RemoteItem {
@@ -17,6 +17,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     const root = folder.uri.fsPath;
     const log = vscode.window.createOutputChannel('s-sftp', { log: true });
+    if (vscode.workspace.workspaceFolders!.length > 1) {
+        log.warn('Multi-root workspace: only the first folder is used');
+    }
     let session: Session | undefined;
     const treeChanged = new vscode.EventEmitter<void>();
 
@@ -55,7 +58,7 @@ export function activate(context: vscode.ExtensionContext): void {
             void vscode.commands.executeCommand('setContext', 'sSftp.active', true);
             statusItem.show();
         } catch (e) {
-            fail(e instanceof ConfigError ? e : e);
+            fail(e);
         }
         treeChanged.fire();
     };
@@ -130,7 +133,6 @@ export function activate(context: vscode.ExtensionContext): void {
                 scheduleRefresh();
             }
         }),
-        vscode.window.onDidChangeActiveTextEditor(scheduleRefresh),
         { dispose: () => clearTimeout(refreshTimer) },
 
         vscode.commands.registerCommand('sSftp.init', () => {
@@ -166,8 +168,16 @@ export function activate(context: vscode.ExtensionContext): void {
             }),
         ),
 
-        vscode.commands.registerCommand('sSftp.download', (arg?: vscode.Uri | RemoteItem) =>
-            withSession(async (s) => {
+        vscode.commands.registerCommand('sSftp.download', async (arg?: vscode.Uri | RemoteItem) => {
+            const answer = await vscode.window.showWarningMessage(
+                'Download overwrites existing local files. Continue?',
+                { modal: true },
+                'Download',
+            );
+            if (answer !== 'Download') {
+                return;
+            }
+            await withSession(async (s) => {
                 let rel: string;
                 if (arg && !(arg instanceof vscode.Uri)) {
                     rel = arg.rel;
@@ -181,8 +191,8 @@ export function activate(context: vscode.ExtensionContext): void {
                 const n = await s.downloadPath(rel);
                 log.info(`Download complete: ${n} file(s)`);
                 vscode.window.setStatusBarMessage(`s-sftp: ${n} file(s) downloaded`, 3000);
-            }),
-        ),
+            });
+        }),
 
         vscode.commands.registerCommand('sSftp.refresh', () => treeChanged.fire()),
         vscode.commands.registerCommand('sSftp.showLog', () => log.show()),
@@ -209,7 +219,7 @@ export function activate(context: vscode.ExtensionContext): void {
                 return;
             }
             const file = doc.uri.fsPath;
-            if (path.relative(root, file).startsWith('..')) {
+            if (isOutside(path.relative(root, file))) {
                 return;
             }
             void withSession((s) => s.uploadFile(file));
@@ -221,7 +231,7 @@ export function activate(context: vscode.ExtensionContext): void {
                 return;
             }
             for (const uri of event.files) {
-                if (uri.scheme === 'file' && !path.relative(root, uri.fsPath).startsWith('..')) {
+                if (uri.scheme === 'file' && !isOutside(path.relative(root, uri.fsPath))) {
                     void withSession(async (s) => {
                         await s.uploadPath(uri.fsPath);
                     });
@@ -234,9 +244,29 @@ export function activate(context: vscode.ExtensionContext): void {
                 return;
             }
             for (const uri of event.files) {
-                if (uri.scheme === 'file' && !path.relative(root, uri.fsPath).startsWith('..')) {
+                if (uri.scheme === 'file' && !isOutside(path.relative(root, uri.fsPath))) {
                     void withSession((s) => s.deleteRemote(uri.fsPath));
                 }
+            }
+        }),
+
+        // Rinomina o spostamento locale: caricare il nuovo percorso, poi rimuovere il vecchio se deleteRemote è attivo
+        vscode.workspace.onDidRenameFiles((event) => {
+            if (!session?.cfg.uploadOnSave && !session?.cfg.deleteRemote) {
+                return;
+            }
+            for (const { oldUri, newUri } of event.files) {
+                if (oldUri.scheme !== 'file' || newUri.scheme !== 'file') {
+                    continue;
+                }
+                void withSession(async (s) => {
+                    if (s.cfg.uploadOnSave && !isOutside(path.relative(root, newUri.fsPath))) {
+                        await s.uploadPath(newUri.fsPath);
+                    }
+                    if (s.cfg.deleteRemote && !isOutside(path.relative(root, oldUri.fsPath))) {
+                        await s.deleteRemote(oldUri.fsPath);
+                    }
+                });
             }
         }),
     );
