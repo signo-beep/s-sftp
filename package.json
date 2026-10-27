@@ -1,0 +1,144 @@
+{
+  "name": "s-sftp",
+  "displayName": "s-sftp",
+  "description": "SFTP upload and download with private key only, configured via .vscode/sftp.json",
+  "version": "0.1.0",
+  "publisher": "ssigno",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "sSftp.init",
+        "title": "s-sftp: Create sftp.json"
+      },
+      {
+        "command": "sSftp.upload",
+        "title": "s-sftp: Upload"
+      },
+      {
+        "command": "sSftp.download",
+        "title": "s-sftp: Download",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "sSftp.refresh",
+        "title": "s-sftp: Refresh Remote Tree",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sSftp.showLog",
+        "title": "s-sftp: Show Log"
+      },
+      {
+        "command": "sSftp.deleteRemote",
+        "title": "s-sftp: Delete Remote",
+        "icon": "$(trash)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "sSftp.upload",
+          "when": "sSftp.active",
+          "group": "sSftp@1"
+        },
+        {
+          "command": "sSftp.download",
+          "when": "sSftp.active",
+          "group": "sSftp@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "sSftp.upload",
+          "when": "sSftp.active",
+          "group": "sSftp@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "sSftp.download",
+          "when": "view == sSftpRemote",
+          "group": "inline"
+        },
+        {
+          "command": "sSftp.deleteRemote",
+          "when": "view == sSftpRemote",
+          "group": "inline"
+        },
+        {
+          "command": "sSftp.deleteRemote",
+          "when": "view == sSftpRemote",
+          "group": "9_delete"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "sSftp.refresh",
+          "when": "view == sSftpRemote",
+          "group": "navigation"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sSftp",
+          "title": "s-sftp",
+          "icon": "resources/sftp.svg"
+        }
+      ]
+    },
+    "views": {
+      "sSftp": [
+        {
+          "id": "sSftpRemote",
+          "name": "Remote Files",
+          "when": "sSftp.hasConfig"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "sSftpRemote",
+        "contents": "Invalid sftp.json: see Output > s-sftp.\n[Create sftp.json](command:sSftp.init)",
+        "when": "!sSftp.active"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "sSftp.deleteRemote",
+        "key": "delete",
+        "mac": "cmd+backspace",
+        "when": "focusedView == sSftpRemote"
+      }
+    ]
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "node esbuild.mjs",
+    "package": "npm run typecheck && npm run build && vsce package"
+  },
+  "dependencies": {
+    "minimatch": "^9.0.5",
+    "ssh2-sftp-client": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/ssh2-sftp-client": "^9.0.4",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.0"
+  }
+}
