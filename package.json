@@ -19,29 +19,41 @@
     "commands": [
       {
         "command": "sSftp.init",
-        "title": "s-sftp: Create sftp.json"
+        "title": "Create sftp.json",
+        "category": "s-sftp"
       },
       {
         "command": "sSftp.upload",
-        "title": "s-sftp: Upload to server"
+        "title": "Upload to server",
+        "category": "s-sftp"
       },
       {
         "command": "sSftp.download",
-        "title": "s-sftp: Download from server",
+        "title": "Download from server",
+        "category": "s-sftp",
         "icon": "$(cloud-download)"
       },
       {
+        "command": "sSftp.sync",
+        "title": "Sync with server",
+        "category": "s-sftp",
+        "icon": "$(sync)"
+      },
+      {
         "command": "sSftp.refresh",
-        "title": "s-sftp: Refresh Remote Tree",
+        "title": "Refresh Remote Tree",
+        "category": "s-sftp",
         "icon": "$(refresh)"
       },
       {
         "command": "sSftp.showLog",
-        "title": "s-sftp: Show Log"
+        "title": "Show Log",
+        "category": "s-sftp"
       },
       {
         "command": "sSftp.deleteRemote",
-        "title": "s-sftp: Delete Remote",
+        "title": "Delete Remote",
+        "category": "s-sftp",
         "icon": "$(trash)"
       }
     ],
@@ -50,12 +62,17 @@
         {
           "command": "sSftp.upload",
           "when": "sSftp.active",
-          "group": "sSftp_1_upload@1"
+          "group": "sSftp@1"
         },
         {
           "command": "sSftp.download",
           "when": "sSftp.active",
-          "group": "sSftp_2_download@1"
+          "group": "sSftp@2"
+        },
+        {
+          "command": "sSftp.sync",
+          "when": "sSftp.active && explorerResourceIsFolder",
+          "group": "sSftp@3"
         }
       ],
       "editor/context": [
@@ -83,6 +100,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "sSftp.sync",
+          "when": "view == sSftpRemote",
+          "group": "navigation"
+        },
         {
           "command": "sSftp.refresh",
           "when": "view == sSftpRemote",

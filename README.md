@@ -38,7 +38,8 @@ Estensione VS Code per caricare e scaricare file via SFTP con **sola chiave priv
 ## Comandi
 
 * `s-sftp: Upload to server`: file o cartella (menu contestuale di Explorer e editor).
-* `s-sftp: Download from server`: file o cartella (Explorer e albero remoto). Nel menu Explorer sta in un gruppo separato da Upload. Chiede conferma, con il percorso, prima di sovrascrivere i file locali.
+* `s-sftp: Download from server`: file o cartella (Explorer e albero remoto). Chiede conferma, con il percorso, prima di sovrascrivere i file locali.
+* `s-sftp: Sync with server`: sincronizzare una cartella (menu Explorer, titolo dell'albero remoto) o l'intero workspace. Si sceglie la direzione (locale verso server, o server verso locale), poi il confronto per dimensione e data produce un'anteprima nel log: file nuovi, modificati e presenti solo sulla destinazione. Nulla viene toccato prima della conferma. La cancellazione dei file extra è un pulsante separato (sul server definitiva, in locale va nel cestino). Limite: la data dipende dagli orologi di locale e server.
 * `s-sftp: Refresh Remote Tree`.
 * `s-sftp: Create sftp.json`: crea il file in `.vscode` senza sovrascrivere quello esistente.
 

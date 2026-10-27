@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { loadConfig } from './config';
 import { Session, isOutside } from './client';
+import { runSync } from './sync';
 import { SFTP_JSON } from './templates';
 
 interface RemoteItem {
@@ -193,6 +194,14 @@ export function activate(context: vscode.ExtensionContext): void {
                 const n = await s.downloadPath(rel);
                 log.info(`Download complete: ${n} file(s)`);
                 vscode.window.setStatusBarMessage(`s-sftp: ${n} file(s) downloaded`, 3000);
+            }),
+        ),
+
+        // Sincronizzazione con anteprima: cartella scelta in Explorer, altrimenti l'intero workspace
+        vscode.commands.registerCommand('sSftp.sync', (arg?: vscode.Uri) =>
+            withSession(async (s) => {
+                const scope = arg instanceof vscode.Uri && fs.statSync(arg.fsPath).isDirectory() ? s.relPosix(arg.fsPath) : '';
+                await runSync(s, log, scope);
             }),
         ),
 
