@@ -21,22 +21,24 @@ Estensione VS Code per caricare e scaricare file via SFTP con **sola chiave priv
 }
 ```
 
-* `deleteRemote` (opzionale, default `false`): cancellare sul server i file e le cartelle cancellati in locale.
-* `ignore`: pattern in stile `.gitignore`. Senza `/` valgono su qualsiasi livello; ignorare una cartella esclude tutto il contenuto.
+* `uploadOnSave`: caricare i file al salvataggio, alla creazione (anche incolla o trascinamento) e alla rinomina o allo spostamento.
+* `deleteRemote` (opzionale, default `false`): cancellare sul server i file e le cartelle cancellati in locale. Alla rinomina o allo spostamento rimuove anche il percorso vecchio.
+* `ignore`: pattern in stile `.gitignore` semplificato. Senza `/` valgono su qualsiasi livello; ignorare una cartella esclude tutto il contenuto. La negazione `!` non è supportata: il carattere è letterale.
 * `privateKeyPath`: relativo alla radice del workspace.
+* Workspace multi-root: viene usata solo la prima cartella (avviso nel log).
 
 ## Regole di sicurezza
 
 * Solo autenticazione `publickey`. I campi `password`, `passphrase`, `privateKey`, `agent`, `interactiveAuth`, `sshCustomAuth` e un `protocol` diverso da `sftp` rendono la configurazione non valida.
 * Chiave con passphrase: rifiutata.
 * Su Linux e Mac la chiave deve avere permessi `600`: con permessi più aperti compare un avviso.
-* Host key: alla prima connessione viene chiesta conferma dell'impronta SHA256. Se l'impronta cambia, la connessione viene bloccata.
+* Host key: alla prima connessione viene chiesta conferma dell'impronta SHA256 (timeout dell'handshake: 120 s). Se l'impronta cambia, la connessione viene bloccata.
 * La cancellazione remota non tocca mai la radice di `remotePath`.
 
 ## Comandi
 
-* `s-sftp: Upload`: file o cartella (menu contestuale di Explorer e editor).
-* `s-sftp: Download`: file o cartella (Explorer e albero remoto).
+* `s-sftp: Upload to server`: file o cartella (menu contestuale di Explorer e editor).
+* `s-sftp: Download from server`: file o cartella (Explorer e albero remoto). Nel menu Explorer sta in un gruppo separato da Upload. Chiede conferma, con il percorso, prima di sovrascrivere i file locali.
 * `s-sftp: Refresh Remote Tree`.
 * `s-sftp: Create sftp.json`: crea il file in `.vscode` senza sovrascrivere quello esistente.
 
@@ -51,8 +53,10 @@ npm run package      # file .vsix
 
 Installazione: `code --install-extension s-sftp-0.1.0.vsix`.
 
+`.vscodeignore` esclude `src`, `node_modules`, `*.zip` e `*.vsix` dal pacchetto.
+
 ## Stato
 
-Versione 0.1.0: typecheck e build riusciti, test dei pattern `ignore` fatto. Non provato contro un server SFTP reale né in VS Code.
+Versione 0.1.0: typecheck e build riusciti, test dei pattern `ignore` fatto. Revisione del codice applicata (chiusura connessioni durante il reload, `mkdir` serializzato, controllo dei percorsi fuori workspace, rinomina remota). Non provato contro un server SFTP reale né in VS Code.
 
 Dipendenza `ssh2` 1.17: usa `util.types.isDate`, quindi non ha il problema `isDate is not a function` di Natizyskunk 1.16.3 su Node 23.

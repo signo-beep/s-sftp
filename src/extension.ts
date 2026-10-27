@@ -168,16 +168,8 @@ export function activate(context: vscode.ExtensionContext): void {
             }),
         ),
 
-        vscode.commands.registerCommand('sSftp.download', async (arg?: vscode.Uri | RemoteItem) => {
-            const answer = await vscode.window.showWarningMessage(
-                'Download overwrites existing local files. Continue?',
-                { modal: true },
-                'Download',
-            );
-            if (answer !== 'Download') {
-                return;
-            }
-            await withSession(async (s) => {
+        vscode.commands.registerCommand('sSftp.download', (arg?: vscode.Uri | RemoteItem) =>
+            withSession(async (s) => {
                 let rel: string;
                 if (arg && !(arg instanceof vscode.Uri)) {
                     rel = arg.rel;
@@ -188,11 +180,21 @@ export function activate(context: vscode.ExtensionContext): void {
                     }
                     rel = s.relPosix(uri.fsPath);
                 }
+                // Conferma con il percorso: Upload e Download sono vicini nei menu, evitare click per riflesso
+                const target = rel === '' ? 'the whole remote folder' : `"${rel}"`;
+                const answer = await vscode.window.showWarningMessage(
+                    `Download ${target} from the server and overwrite local files?`,
+                    { modal: true },
+                    'Download',
+                );
+                if (answer !== 'Download') {
+                    return;
+                }
                 const n = await s.downloadPath(rel);
                 log.info(`Download complete: ${n} file(s)`);
                 vscode.window.setStatusBarMessage(`s-sftp: ${n} file(s) downloaded`, 3000);
-            });
-        }),
+            }),
+        ),
 
         vscode.commands.registerCommand('sSftp.refresh', () => treeChanged.fire()),
         vscode.commands.registerCommand('sSftp.showLog', () => log.show()),

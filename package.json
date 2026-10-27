@@ -23,11 +23,11 @@
       },
       {
         "command": "sSftp.upload",
-        "title": "s-sftp: Upload"
+        "title": "s-sftp: Upload to server"
       },
       {
         "command": "sSftp.download",
-        "title": "s-sftp: Download",
+        "title": "s-sftp: Download from server",
         "icon": "$(cloud-download)"
       },
       {
@@ -50,12 +50,12 @@
         {
           "command": "sSftp.upload",
           "when": "sSftp.active",
-          "group": "sSftp@1"
+          "group": "sSftp_1_upload@1"
         },
         {
           "command": "sSftp.download",
           "when": "sSftp.active",
-          "group": "sSftp@2"
+          "group": "sSftp_2_download@1"
         }
       ],
       "editor/context": [
