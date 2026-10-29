@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -18,6 +19,12 @@ export class Session {
     private client: SftpClient | undefined;
     private mkdirQueue: Promise<unknown> = Promise.resolve();
     private readonly knownDirs = new Set<string>();
+    // Hash dell'ultimo contenuto caricato per percorso relativo: serve a saltare i salvataggi senza modifiche
+    private readonly uploadedHashes = new Map<string, string>();
+    // Serializza upload e download dello stesso file: due salvataggi ravvicinati non devono finire fuori ordine
+    private readonly fileQueues = new Map<string, Promise<unknown>>();
+    // Incrementato a ogni cancellazione remota: un upload iniziato prima non deve reinserire il suo hash
+    private cacheEpoch = 0;
     private connecting: Promise<SftpClient> | undefined;
 
     constructor(
@@ -148,20 +155,67 @@ export class Session {
         return run;
     }
 
-    async uploadFile(local: string): Promise<void> {
+    private serial<T>(rel: string, fn: () => Promise<T>): Promise<T> {
+        const prev = this.fileQueues.get(rel) ?? Promise.resolve();
+        const run = prev.catch(() => undefined).then(fn);
+        const tail = run.catch(() => undefined);
+        this.fileQueues.set(rel, tail);
+        void tail.then(() => {
+            if (this.fileQueues.get(rel) === tail) {
+                this.fileQueues.delete(rel);
+            }
+        });
+        return run;
+    }
+
+    // Falso se il file reale (dopo i symlink) esce dal workspace, è la chiave o è un percorso escluso
+    isSafeLocal(local: string): boolean {
+        try {
+            const realRoot = fs.realpathSync(this.root);
+            const real = fs.realpathSync(local);
+            const realRel = path.relative(realRoot, real);
+            if (isOutside(realRel) || real === fs.realpathSync(this.keyFile)) {
+                return false;
+            }
+            return !this.ignored(realRel.split(path.sep).join('/'));
+        } catch {
+            return false;
+        }
+    }
+
+    async uploadFile(local: string, skipUnchanged = false): Promise<void> {
         const rel = this.relPosix(local);
         if (this.ignored(rel)) {
             return;
         }
-        const remote = this.remoteFor(rel);
-        try {
-            const client = await this.get();
-            await this.ensureDir(client, path.posix.dirname(remote));
-            await client.fastPut(local, remote);
-        } catch (e) {
-            throw new Error(`Upload failed for ${rel}: ${(e as Error).message}`);
+        if (!this.isSafeLocal(local)) {
+            this.log.warn(`Skipped ${rel}: resolves outside the workspace, to the private key or to an ignored path`);
+            return;
         }
-        this.log.info(`Uploaded ${rel}`);
+        const remote = this.remoteFor(rel);
+        await this.serial(rel, async () => {
+            try {
+                // Hash e upload usano lo stesso buffer: la cache non può divergere dal contenuto inviato
+                const data = fs.readFileSync(local);
+                const hash = crypto.createHash('sha1').update(data).digest('hex');
+                if (skipUnchanged && this.uploadedHashes.get(rel) === hash) {
+                    this.log.info(`Unchanged, skipped ${rel}`);
+                    return;
+                }
+                // Un upload fallito a metà può lasciare un file corrotto: l'hash vecchio non vale più
+                this.uploadedHashes.delete(rel);
+                const epoch = this.cacheEpoch;
+                const client = await this.get();
+                await this.ensureDir(client, path.posix.dirname(remote));
+                await client.put(data, remote);
+                if (epoch === this.cacheEpoch) {
+                    this.uploadedHashes.set(rel, hash);
+                }
+            } catch (e) {
+                throw new Error(`Upload failed for ${rel}: ${(e as Error).message}`);
+            }
+            this.log.info(`Uploaded ${rel}`);
+        });
     }
 
     async uploadPath(local: string): Promise<number> {
@@ -216,7 +270,11 @@ export class Session {
         }
         if (type === '-') {
             fs.mkdirSync(path.dirname(local), { recursive: true });
-            await client.fastGet(remote, local);
+            await this.serial(rel, async () => {
+                await client.fastGet(remote, local);
+                // Il contenuto locale ora viene dal server: l'hash dell'ultimo upload non vale più
+                this.uploadedHashes.delete(rel);
+            });
             this.log.info(`Downloaded ${rel}`);
             return 1;
         }
@@ -237,6 +295,12 @@ export class Session {
         const type = await client.exists(remote);
         // Le cartelle in cache potrebbero non esistere più
         this.knownDirs.clear();
+        this.cacheEpoch++;
+        for (const key of this.uploadedHashes.keys()) {
+            if (key === rel || key.startsWith(rel + '/')) {
+                this.uploadedHashes.delete(key);
+            }
+        }
         if (type === 'd') {
             await client.rmdir(remote, true);
         } else if (type === '-') {

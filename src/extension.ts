@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { loadConfig } from './config';
 import { Session, isOutside } from './client';
-import { runSync } from './sync';
+import { Direction, runSync } from './sync';
 import { SFTP_JSON } from './templates';
 
 interface RemoteItem {
@@ -198,11 +198,17 @@ export function activate(context: vscode.ExtensionContext): void {
         ),
 
         // Sincronizzazione con anteprima: cartella scelta in Explorer, altrimenti l'intero workspace
-        vscode.commands.registerCommand('sSftp.sync', (arg?: vscode.Uri) =>
-            withSession(async (s) => {
-                const scope = arg instanceof vscode.Uri && fs.statSync(arg.fsPath).isDirectory() ? s.relPosix(arg.fsPath) : '';
-                await runSync(s, log, scope);
-            }),
+        ...([
+            ['sSftp.sync', undefined],
+            ['sSftp.syncUp', 'up'],
+            ['sSftp.syncDown', 'down'],
+        ] as const).map(([id, direction]: readonly [string, Direction | undefined]) =>
+            vscode.commands.registerCommand(id, (arg?: vscode.Uri) =>
+                withSession(async (s) => {
+                    const scope = arg instanceof vscode.Uri && fs.statSync(arg.fsPath).isDirectory() ? s.relPosix(arg.fsPath) : '';
+                    await runSync(s, log, scope, direction);
+                }),
+            ),
         ),
 
         vscode.commands.registerCommand('sSftp.refresh', () => treeChanged.fire()),
@@ -233,7 +239,7 @@ export function activate(context: vscode.ExtensionContext): void {
             if (isOutside(path.relative(root, file))) {
                 return;
             }
-            void withSession((s) => s.uploadFile(file));
+            void withSession((s) => s.uploadFile(file, true));
         }),
 
         // Creazione (anche incolla o trascinamento) di file e cartelle: stessa regola di uploadOnSave

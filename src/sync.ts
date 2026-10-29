@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { Session } from './client';
 
-type Direction = 'up' | 'down';
+export type Direction = 'up' | 'down';
 
 interface FileInfo {
     size: number;
@@ -23,6 +23,14 @@ function localPath(s: Session, rel: string): string {
     return path.join(s.root, ...rel.split('/').filter(Boolean));
 }
 
+function isLink(file: string): boolean {
+    try {
+        return fs.lstatSync(file).isSymbolicLink();
+    } catch {
+        return false;
+    }
+}
+
 function listLocal(s: Session, rel: string, out: Map<string, FileInfo>): void {
     const dir = localPath(s, rel);
     if (!fs.existsSync(dir)) {
@@ -38,6 +46,18 @@ function listLocal(s: Session, rel: string, out: Map<string, FileInfo>): void {
         } else if (entry.isFile()) {
             const st = fs.statSync(path.join(dir, entry.name));
             out.set(childRel, { size: st.size, mtime: st.mtimeMs });
+        } else if (entry.isSymbolicLink()) {
+            // Symlink a un file: contato come file; i symlink a cartelle non si seguono (cicli)
+            try {
+                const target = path.join(dir, entry.name);
+                // Solo symlink che restano nel workspace: mai chiave, percorsi esclusi o file esterni
+                const st = s.isSafeLocal(target) ? fs.statSync(target) : undefined;
+                if (st?.isFile()) {
+                    out.set(childRel, { size: st.size, mtime: st.mtimeMs });
+                }
+            } catch {
+                // symlink rotto: ignorato
+            }
         }
     }
 }
@@ -83,19 +103,28 @@ function makePlan(src: Map<string, FileInfo>, dst: Map<string, FileInfo>): Plan 
     return plan;
 }
 
-// Sincronizzazione con anteprima: nulla viene toccato prima della conferma
-export async function runSync(s: Session, log: vscode.LogOutputChannel, scopeRel: string): Promise<void> {
-    const choice = await vscode.window.showQuickPick(
-        [
-            { label: 'Local to server', description: 'upload new and changed files', direction: 'up' as Direction },
-            { label: 'Server to local', description: 'download new and changed files', direction: 'down' as Direction },
-        ],
-        { title: `s-sftp: sync ${scopeRel === '' ? 'whole workspace' : scopeRel}`, placeHolder: 'Choose the direction' },
-    );
-    if (!choice) {
-        return;
+// Sincronizzazione con anteprima: nulla viene toccato prima della conferma.
+// Senza direzione esplicita la si chiede con un selettore
+export async function runSync(
+    s: Session,
+    log: vscode.LogOutputChannel,
+    scopeRel: string,
+    fixedDirection?: Direction,
+): Promise<void> {
+    let direction = fixedDirection;
+    if (!direction) {
+        const choice = await vscode.window.showQuickPick(
+            [
+                { label: 'Local to server', description: 'upload new and changed files', direction: 'up' as Direction },
+                { label: 'Server to local', description: 'download new and changed files', direction: 'down' as Direction },
+            ],
+            { title: `s-sftp: sync ${scopeRel === '' ? 'whole workspace' : scopeRel}`, placeHolder: 'Choose the direction' },
+        );
+        if (!choice) {
+            return;
+        }
+        direction = choice.direction;
     }
-    const direction = choice.direction;
 
     const local = new Map<string, FileInfo>();
     const remote = new Map<string, FileInfo>();
@@ -112,6 +141,22 @@ export async function runSync(s: Session, log: vscode.LogOutputChannel, scopeRel
     );
 
     const plan = direction === 'up' ? makePlan(local, remote) : makePlan(remote, local);
+    // Rete di sicurezza: mai proporre di cancellare ciò che esiste ancora dall'altra parte, anche se la lista non lo ha visto
+    const client = await s.get();
+    const kept: string[] = [];
+    for (const rel of plan.extra) {
+        const survives =
+            direction === 'up'
+                ? fs.existsSync(localPath(s, rel)) || isLink(localPath(s, rel))
+                : (await client.exists(s.remoteFor(rel))) !== false;
+        if (survives) {
+            kept.push(rel);
+        }
+    }
+    if (kept.length > 0) {
+        plan.extra = plan.extra.filter((rel) => !kept.includes(rel));
+        kept.forEach((rel) => log.warn(`Skipped delete, still exists on ${direction === 'up' ? 'local' : 'server'}: ${rel}`));
+    }
     const total = plan.fresh.length + plan.changed.length;
     if (total === 0 && plan.extra.length === 0) {
         void vscode.window.showInformationMessage('s-sftp: already in sync');

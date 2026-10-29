@@ -2,7 +2,7 @@
   "name": "s-sftp",
   "displayName": "s-sftp",
   "description": "SFTP upload and download with private key only, configured via .vscode/sftp.json",
-  "version": "0.2.0",
+  "version": "0.3.3",
   "publisher": "ssigno",
   "license": "MIT",
   "engines": {
@@ -40,6 +40,16 @@
         "icon": "$(sync)"
       },
       {
+        "command": "sSftp.syncUp",
+        "title": "Sync: Local -> Server",
+        "category": "s-sftp"
+      },
+      {
+        "command": "sSftp.syncDown",
+        "title": "Sync: Local <- Server",
+        "category": "s-sftp"
+      },
+      {
         "command": "sSftp.refresh",
         "title": "Refresh Remote Tree",
         "category": "s-sftp",
@@ -70,9 +80,14 @@
           "group": "sSftp@2"
         },
         {
-          "command": "sSftp.sync",
+          "command": "sSftp.syncUp",
           "when": "sSftp.active && explorerResourceIsFolder",
           "group": "sSftp@3"
+        },
+        {
+          "command": "sSftp.syncDown",
+          "when": "sSftp.active && explorerResourceIsFolder",
+          "group": "sSftp@4"
         }
       ],
       "editor/context": [
