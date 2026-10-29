@@ -22,6 +22,7 @@ export function activate(context: vscode.ExtensionContext): void {
         log.warn('Multi-root workspace: only the first folder is used');
     }
     let session: Session | undefined;
+    const manualSaves = new Set<string>();
     const treeChanged = new vscode.EventEmitter<void>();
 
     // Voce nella barra di stato: apre il canale Output con il log di upload e download
@@ -239,7 +240,19 @@ export function activate(context: vscode.ExtensionContext): void {
             if (isOutside(path.relative(root, file))) {
                 return;
             }
+            // Autosave (AfterDelay, FocusOut) ignorato: si carica solo al salvataggio esplicito
+            if (!manualSaves.delete(file)) {
+                return;
+            }
             void withSession((s) => s.uploadFile(file, true));
+        }),
+
+        vscode.workspace.onWillSaveTextDocument((event) => {
+            if (event.reason === vscode.TextDocumentSaveReason.Manual) {
+                manualSaves.add(event.document.uri.fsPath);
+            } else {
+                manualSaves.delete(event.document.uri.fsPath);
+            }
         }),
 
         // Creazione (anche incolla o trascinamento) di file e cartelle: stessa regola di uploadOnSave

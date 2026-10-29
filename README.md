@@ -54,7 +54,7 @@ npm run build        # dist/extension.js
 npm run package      # file .vsix
 ```
 
-Installazione: `code --install-extension s-sftp-0.3.3.vsix`.
+Installazione: `code --install-extension s-sftp-0.3.4.vsix`.
 
 ## Note
 
