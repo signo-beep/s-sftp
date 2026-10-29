@@ -2,7 +2,7 @@
   "name": "s-sftp",
   "displayName": "s-sftp",
   "description": "SFTP upload and download with private key only, configured via .vscode/sftp.json",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "ssigno",
   "license": "MIT",
   "engines": {
@@ -87,6 +87,11 @@
           "command": "sSftp.download",
           "when": "view == sSftpRemote",
           "group": "inline"
+        },
+        {
+          "command": "sSftp.download",
+          "when": "view == sSftpRemote",
+          "group": "1_transfer"
         },
         {
           "command": "sSftp.deleteRemote",

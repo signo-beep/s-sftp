@@ -3,5 +3,6 @@ node_modules/**
 esbuild.mjs
 tsconfig.json
 **/*.map
-*.zip
-*.vsix
+**/*.zip
+**/*.vsix
+old_vsix/**
