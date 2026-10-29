@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f4741"/>
+      <stop offset="1" stop-color="#1b2a26"/>
+    </linearGradient>
+    <clipPath id="left"><rect x="0" y="0" width="512" height="1024"/></clipPath>
+    <clipPath id="right"><rect x="512" y="0" width="512" height="1024"/></clipPath>
+    <rect id="unit" x="192" width="640" height="220" rx="56"/>
+  </defs>
+  <rect width="1024" height="1024" rx="230" fill="url(#bg)"/>
+  <g>
+    <use xlink:href="#unit" y="212" fill="#81c784" clip-path="url(#left)"/>
+    <use xlink:href="#unit" y="212" fill="#2e9e4f" clip-path="url(#right)"/>
+    <use xlink:href="#unit" y="592" fill="#81c784" clip-path="url(#left)"/>
+    <use xlink:href="#unit" y="592" fill="#2e9e4f" clip-path="url(#right)"/>
+    <circle cx="300" cy="322" r="30" fill="#1b2a26"/>
+    <circle cx="300" cy="702" r="30" fill="#1b2a26"/>
+    <g fill="none" stroke="#e8f5e9" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M630 574 V450 M630 450 L590 490 M630 450 L670 490"/>
+      <path d="M750 450 V574 M750 574 L710 534 M750 574 L790 534"/>
+    </g>
+  </g>
+</svg>

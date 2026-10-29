@@ -59,3 +59,7 @@ Installazione: `code --install-extension s-sftp-0.3.3.vsix`.
 ## Note
 
 Dipendenza `ssh2` 1.17: usa `util.types.isDate`, quindi non ha il problema `isDate is not a function` di Natizyskunk 1.16.3 su Node 23.
+
+## Licenza
+
+GPL-3.0-only. Vedi `LICENSE`.

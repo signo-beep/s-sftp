@@ -6,3 +6,4 @@ tsconfig.json
 **/*.zip
 **/*.vsix
 old_vsix/**
+resources/icon.svg

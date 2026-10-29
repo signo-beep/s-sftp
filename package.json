@@ -4,7 +4,8 @@
   "description": "SFTP upload and download with private key only, configured via .vscode/sftp.json",
   "version": "0.3.3",
   "publisher": "ssigno",
-  "license": "MIT",
+  "icon": "resources/icon.png",
+  "license": "GPL-3.0-only",
   "engines": {
     "vscode": "^1.85.0"
   },
