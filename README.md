@@ -34,6 +34,7 @@ Estensione VS Code per caricare e scaricare file via SFTP con **sola chiave priv
 * Su Linux e Mac la chiave deve avere permessi `600`: con permessi più aperti compare un avviso.
 * Host key: alla prima connessione viene chiesta conferma dell'impronta SHA256 (timeout dell'handshake: 120 s). Se l'impronta cambia, la connessione viene bloccata.
 * La cancellazione remota non tocca mai la radice di `remotePath`.
+* `.git`, `.vscode` e il file della chiave privata sono sempre esclusi dai trasferimenti, anche se non sono in `ignore`.
 
 ## Comandi
 
@@ -43,7 +44,7 @@ Estensione VS Code per caricare e scaricare file via SFTP con **sola chiave priv
 * `s-sftp: Refresh Remote Tree`.
 * `s-sftp: Create sftp.json`: crea il file in `.vscode` senza sovrascrivere quello esistente.
 
-## Build
+## Sviluppo
 
 ```
 npm install
@@ -54,10 +55,6 @@ npm run package      # file .vsix
 
 Installazione: `code --install-extension s-sftp-0.2.0.vsix`.
 
-`.vscodeignore` esclude `src`, `node_modules`, `*.zip`, `*.vsix` e `old_vsix` dal pacchetto.
-
-## Stato
-
-Versione 0.2.0: typecheck e build riusciti, test dei pattern `ignore` fatto. Revisione del codice applicata (chiusura connessioni durante il reload, `mkdir` serializzato, controllo dei percorsi fuori workspace, rinomina remota). Non provato contro un server SFTP reale né in VS Code.
+## Note
 
 Dipendenza `ssh2` 1.17: usa `util.types.isDate`, quindi non ha il problema `isDate is not a function` di Natizyskunk 1.16.3 su Node 23.
