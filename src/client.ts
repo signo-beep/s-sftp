@@ -5,6 +5,9 @@ import SftpClient from 'ssh2-sftp-client';
 import { SftpConfig } from './config';
 import { isIgnored } from './ignore';
 
+// Sempre esclusi, anche se assenti da "ignore": un server ostile non deve poter scrivere hook o task nel workspace
+const ALWAYS_IGNORED = ['.git', '.vscode'];
+
 // Vero se il percorso relativo esce dalla radice (non basta startsWith('..'): esiste "..hidden")
 export function isOutside(rel: string): boolean {
     return rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel);
@@ -39,7 +42,11 @@ export class Session {
     }
 
     ignored(rel: string): boolean {
-        return isIgnored(rel, this.cfg.ignore);
+        // Mai trasferire la chiave privata, né in upload né in download
+        if (path.resolve(this.root, ...rel.split('/')) === this.keyFile) {
+            return true;
+        }
+        return isIgnored(rel, [...ALWAYS_IGNORED, ...this.cfg.ignore]);
     }
 
     dispose(): void {
