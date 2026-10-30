@@ -1,4 +1,4 @@
-# ws-sftp
+# s-sftp
 
 [Italiano](README.it.md)
 
