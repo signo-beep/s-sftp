@@ -1,10 +1,12 @@
-# s-sftp
+# ws-sftp
 
-Estensione VS Code per caricare e scaricare file via SFTP con **sola chiave privata** (senza passphrase). Alternativa semplificata a Natizyskunk SFTP, con lo stesso formato di `.vscode/sftp.json`.
+[Italiano](README.it.md)
 
-## Configurazione
+VS Code extension to upload and download files over SFTP with **private key only** (no passphrase). Uses the common `.vscode/sftp.json` format.
 
-`.vscode/sftp.json` (creabile con il comando `s-sftp: Create sftp.json`):
+## Configuration
+
+`.vscode/sftp.json` (can be created with the `s-sftp: Create sftp.json` command):
 
 ```json
 {
@@ -21,45 +23,43 @@ Estensione VS Code per caricare e scaricare file via SFTP con **sola chiave priv
 }
 ```
 
-* `uploadOnSave`: caricare i file al salvataggio (saltato se il contenuto è identico all'ultimo caricato nella sessione), alla creazione (anche incolla o trascinamento) e alla rinomina o allo spostamento.
-* `deleteRemote` (opzionale, default `false`): cancellare sul server i file e le cartelle cancellati in locale. Alla rinomina o allo spostamento rimuove anche il percorso vecchio.
-* `ignore`: pattern in stile `.gitignore` semplificato. Senza `/` valgono su qualsiasi livello; ignorare una cartella esclude tutto il contenuto. La negazione `!` non è supportata: il carattere è letterale.
-* `privateKeyPath`: relativo alla radice del workspace.
-* Workspace multi-root: viene usata solo la prima cartella (avviso nel log).
+* `uploadOnSave`: upload files on save (skipped if the content is identical to the last one uploaded in the session), on creation (including paste and drag and drop) and on rename or move.
+* `deleteRemote` (optional, default `false`): delete on the server the files and folders deleted locally. On rename or move it also removes the old path.
+* `ignore`: simplified `.gitignore`-style patterns. Without `/` they match at any level; ignoring a folder excludes all its content. The `!` negation is not supported: the character is literal.
+* `privateKeyPath`: relative to the workspace root.
+* Multi-root workspaces: only the first folder is used (a warning is written to the log).
 
-## Regole di sicurezza
+## Security rules
 
-* Solo autenticazione `publickey`. I campi `password`, `passphrase`, `privateKey`, `agent`, `interactiveAuth`, `sshCustomAuth` e un `protocol` diverso da `sftp` rendono la configurazione non valida.
-* Chiave con passphrase: rifiutata.
-* Su Linux e Mac la chiave deve avere permessi `600`: con permessi più aperti compare un avviso.
-* Host key: alla prima connessione viene chiesta conferma dell'impronta SHA256 (timeout dell'handshake: 120 s). Se l'impronta cambia, la connessione viene bloccata.
-* La cancellazione remota non tocca mai la radice di `remotePath`.
-* `.git`, `.vscode` e il file della chiave privata sono sempre esclusi dai trasferimenti, anche se non sono in `ignore`. I symlink a file si caricano solo se il file reale resta nel workspace e non è la chiave né un percorso escluso.
+* `publickey` authentication only. The fields `password`, `passphrase`, `privateKey`, `agent`, `interactiveAuth`, `sshCustomAuth` and a `protocol` other than `sftp` make the configuration invalid.
+* Key with a passphrase: rejected.
+* On Linux and Mac the key must have `600` permissions: a warning is shown if they are more open.
+* Host key: on first connection you are asked to confirm the SHA256 fingerprint (handshake timeout: 120 s). If the fingerprint changes, the connection is blocked.
+* Remote deletion never touches the root of `remotePath`.
+* `.git`, `.vscode` and the private key file are always excluded from transfers, even if not listed in `ignore`. Symlinks to files are uploaded only if the real file stays inside the workspace and is neither the key nor an excluded path.
 
-## Comandi
+## Commands
 
-* `s-sftp: Upload to server`: file o cartella (menu contestuale di Explorer e editor).
-* `s-sftp: Download from server`: file o cartella (Explorer e albero remoto, anche dal menu contestuale). Chiede conferma, con il percorso, prima di sovrascrivere i file locali.
-* `s-sftp: Sync with server`: sincronizzare l'intero workspace (titolo dell'albero remoto) scegliendo la direzione (locale verso server, o server verso locale).
-* `s-sftp: Sync: Local -> Server` e `s-sftp: Sync: Local <- Server`: stessa sincronizzazione con la direzione già scelta, per una cartella (menu contestuale di Explorer) o per l'intero workspace (palette). Il confronto per dimensione e data produce un'anteprima nel log: file nuovi, modificati e presenti solo sulla destinazione. Nulla viene toccato prima della conferma. La cancellazione dei file extra è un pulsante separato (sul server definitiva, in locale va nel cestino). Limite: la data dipende dagli orologi di locale e server.
+* `s-sftp: Upload to server`: file or folder (Explorer and editor context menu).
+* `s-sftp: Download from server`: file or folder (Explorer and remote tree, also from the context menu). Asks for confirmation, showing the path, before overwriting local files.
+* `s-sftp: Sync with server`: sync the whole workspace (title of the remote tree), choosing the direction (local to server, or server to local).
+* `s-sftp: Sync: Local -> Server` and `s-sftp: Sync: Local <- Server`: same sync with the direction already chosen, for a folder (Explorer context menu) or for the whole workspace (palette). The comparison by size and date produces a preview in the log: new files, modified files and files present only on the destination. Nothing is touched before confirmation. Deleting the extra files is a separate button (permanent on the server, moved to the trash locally). Limitation: the date depends on the clocks of local machine and server.
 * `s-sftp: Refresh Remote Tree`.
-* `s-sftp: Create sftp.json`: crea il file in `.vscode` senza sovrascrivere quello esistente.
+* `s-sftp: Create sftp.json`: creates the file in `.vscode` without overwriting an existing one.
 
-## Sviluppo
+## Development
 
 ```
 npm install
 npm run typecheck
 npm run build        # dist/extension.js
-npm run package      # file .vsix
+npm run package      # .vsix file
 ```
 
-Installazione: `code --install-extension s-sftp-0.3.4.vsix`.
+## Credits
 
-## Note
+Inspired by [SFTP](https://github.com/Natizyskunk/vscode-sftp) by Natizyskunk.
 
-Dipendenza `ssh2` 1.17: usa `util.types.isDate`, quindi non ha il problema `isDate is not a function` di Natizyskunk 1.16.3 su Node 23.
+## License
 
-## Licenza
-
-GPL-3.0-only. Vedi `LICENSE`.
+GPL-3.0-only. See `LICENSE`.
