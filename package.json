@@ -2,7 +2,7 @@
   "name": "s-sftp",
   "displayName": "s-sftp",
   "description": "SFTP upload and download with private key only, configured via .vscode/sftp.json",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "publisher": "ssigno",
   "icon": "resources/icon.png",
   "license": "GPL-3.0-only",
