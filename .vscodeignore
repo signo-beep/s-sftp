@@ -7,3 +7,4 @@ tsconfig.json
 **/*.vsix
 old_vsix/**
 resources/icon.svg
+local/**
